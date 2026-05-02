@@ -2,7 +2,6 @@
 
 **Module:** 1.2 — Q Developer Setup & Agentic Capabilities  
 **Duration:** 30 minutes  
-**Time Slot:** 9:30 – 10:00 AM  
 **Deliverable:** A working User Registration feature implemented entirely by the `/dev` agent
 
 ---
