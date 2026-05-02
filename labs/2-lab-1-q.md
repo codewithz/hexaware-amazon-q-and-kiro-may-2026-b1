@@ -9,12 +9,16 @@
 
 ## Objective
 
-In this lab you will use Amazon Q Developer's `/dev` agentic mode to implement a complete user registration feature from a single natural language prompt. The goal is **not** to write code — it is to learn how to direct an agent and evaluate what it produces.
+In this lab, you will use Amazon Q Developer's `/dev` agentic mode to implement a complete user registration feature from a single natural language prompt.
 
-By the end you will have:
+The goal is **not** to write code manually. The goal is to learn how to direct an agent, review its work, and evaluate the generated implementation.
+
+By the end of this lab, you will have:
+
 - Used `/dev` for the first time
 - Reviewed and accepted an agent-generated implementation
 - Understood the difference between chat mode and agentic mode
+- Practiced guiding the agent when the generated code needs correction
 
 ---
 
@@ -24,11 +28,19 @@ Before starting this lab, confirm the following:
 
 - [ ] Amazon Q Developer extension is installed in VS Code or IntelliJ
 - [ ] You are signed in with your AWS Builder ID or IAM Identity Center credentials
-- [ ] You can see the Amazon Q icon in the left sidebar (VS Code) or the Q panel (IntelliJ)
+- [ ] You can see the Amazon Q icon in the left sidebar in VS Code or the Q panel in IntelliJ
 - [ ] Your training repository is open in the IDE
-- [ ] Java 17 and Maven are installed (`java -version` and `mvn -version` should both respond)
+- [ ] Java 17 is installed
+- [ ] Maven is installed
 
-If any of the above are missing, complete the prerequisites setup before continuing.
+Verify Java and Maven using the following commands:
+
+```bash
+java -version
+mvn -version
+```
+
+If any of the above are missing, complete the prerequisite setup before continuing.
 
 ---
 
@@ -38,31 +50,37 @@ Amazon Q Developer has two distinct modes:
 
 | Mode | What it does | When to use |
 |---|---|---|
-| **Chat** (`Q` panel) | Answers questions, explains code, gives suggestions inline | Quick questions, code review, learning |
-| **Agentic** (`/dev`) | Reads your codebase, writes files, runs builds, iterates on errors | Implementing features, scaffolding, refactoring |
+| **Chat** (`Q` panel) | Answers questions, explains code, and gives suggestions inline | Quick questions, code review, learning |
+| **Agentic** (`/dev`) | Reads your codebase, writes files, runs builds, and iterates on errors | Implementing features, scaffolding, refactoring |
 
-In chat mode, you write the code. In agentic mode (`/dev`), the agent writes the code, builds it, reads the error, fixes it, and iterates — without you typing a single line.
+In chat mode, **you write the code**.
+
+In agentic mode (`/dev`), **the agent writes the code**, builds it, reads errors, fixes problems, and iterates without you typing each line manually.
 
 This lab uses **agentic mode**.
 
 ---
 
-## Project Setup
+# Project Setup
 
-### Step 1 — Clone or initialise the training repository
+## Step 1 — Clone or Initialise the Training Repository
 
-If you do not already have the training repository open:
+If you already have the training repository open in your IDE, you can skip this step.
+
+If you do not have the repository yet, clone it using the command below:
 
 ```bash
-# Clone the training repository provided by your instructor
 git clone <your-training-repo-url> ai-sdlc-training
 cd ai-sdlc-training
 ```
 
-If starting from scratch, create a new Spring Boot project:
+---
+
+## Option A — Create the Spring Boot Project Using the Command Line
+
+If you are starting from scratch, create a new Spring Boot project using Spring Initializr through `curl`:
 
 ```bash
-# Use Spring Initializr via curl
 curl https://start.spring.io/starter.zip \
   -d type=maven-project \
   -d language=java \
@@ -76,47 +94,104 @@ curl https://start.spring.io/starter.zip \
 
 unzip user-service.zip
 cd user-service
-
-Use this link: 
-
-https://start.spring.io/#!type=maven-project&language=java&platformVersion=4.0.6&packaging=jar&configurationFileFormat=properties&jvmVersion=17&groupId=com.hexaware&artifactId=user-service&packageName=com.hexaware&dependencies=web,validation,lombok,security,data-jpa,postgresql
 ```
-
-### Step 2 — Open the project in your IDE
-
-```bash
-# VS Code
-code .
-
-# IntelliJ — open via File > Open
-```
-
-### Step 3 — Verify Q Developer is active
-
-In VS Code: open the **Chat** panel by clicking the Amazon Q icon (speech bubble with a Q) in the left activity bar. You should see a text input at the bottom.
-
-Type the following and press Enter:
-```
-What Java version is this project using?
-```
-
-Q Developer should respond by inspecting your `pom.xml` and telling you the Java version. If it does not respond, check your sign-in status.
 
 ---
 
-## Running Lab 1
+## Option B — Create the Spring Boot Project Using Spring Initializr Link
 
-### Step 4 — Open the /dev agent
+You can also create the same project using the Spring Initializr web interface.
 
-In the Q Developer chat panel, type `/dev` and press **Space**. The panel will switch to agentic mode — you will see the input change to indicate it is in `/dev` context.
+### Use this link
 
-> **Note:** Do not press Enter until you have typed your full prompt.
+Open the following link in your browser:
 
-### Step 5 — Type the feature prompt
+[Create `user-service` Spring Boot Project using Spring Initializr](https://start.spring.io/#!type=maven-project&language=java&platformVersion=4.0.6&packaging=jar&configurationFileFormat=properties&jvmVersion=17&groupId=com.hexaware&artifactId=user-service&packageName=com.hexaware&dependencies=web,validation,lombok,security,data-jpa,postgresql)
 
-Type the following prompt exactly (or paste it):
+### Project Configuration
 
+The link preselects the following configuration:
+
+| Setting | Value |
+|---|---|
+| Project | Maven |
+| Language | Java |
+| Packaging | JAR |
+| Java Version | 17 |
+| Group ID | `com.hexaware` |
+| Artifact ID | `user-service` |
+| Package Name | `com.hexaware` |
+| Dependencies | Spring Web, Validation, Lombok, Spring Security, Spring Data JPA, PostgreSQL Driver |
+
+After opening the link:
+
+1. Review the selected options.
+2. Click **Generate**.
+3. Extract the downloaded ZIP file.
+4. Open the extracted `user-service` folder in your IDE.
+
+---
+
+## Step 2 — Open the Project in Your IDE
+
+For VS Code:
+
+```bash
+code .
 ```
+
+For IntelliJ:
+
+1. Open IntelliJ IDEA.
+2. Select **File > Open**.
+3. Choose the project folder.
+4. Wait for Maven dependencies to load.
+
+---
+
+## Step 3 — Verify Amazon Q Developer Is Active
+
+In VS Code:
+
+1. Click the Amazon Q icon in the left activity bar.
+2. Open the **Chat** panel.
+3. Confirm that you can see the chat input box.
+
+Ask Q Developer the following question:
+
+```text
+What Java version is this project using?
+```
+
+Q Developer should inspect your `pom.xml` and tell you the Java version.
+
+If it does not respond, check your sign-in status and re-authenticate if required.
+
+---
+
+# Running Lab 1
+
+## Step 4 — Open the `/dev` Agent
+
+In the Q Developer chat panel, type:
+
+```text
+/dev
+```
+
+Then press **Space**.
+
+The panel will switch to agentic mode. You should see the input change to indicate that it is now in `/dev` context.
+
+> **Note:** Do not press Enter until you have typed or pasted the full feature prompt.
+
+---
+
+## Step 5 — Type the Feature Prompt
+
+Type or paste the following prompt exactly:
+
+```text
 Implement a user registration feature for this Spring Boot application.
 
 Requirements:
@@ -134,88 +209,139 @@ UserService, and UserController. Follow standard layered architecture.
 
 Press **Enter**.
 
-### Step 6 — Watch the agent work
+---
 
-The agent will now:
+## Step 6 — Watch the Agent Work
 
-1. **Read your project structure** — it scans `pom.xml`, existing source files, and configuration
-2. **Plan the implementation** — you will see it describe what it will create
-3. **Generate files** — it creates each file one by one:
-   - `User.java` (entity)
+The agent will now perform several actions:
+
+1. **Read your project structure**  
+   It scans `pom.xml`, existing source files, and configuration.
+
+2. **Plan the implementation**  
+   It describes what it will create.
+
+3. **Generate files**  
+   It may create files such as:
+
+   - `User.java`
    - `UserRepository.java`
-   - `RegisterUserRequest.java` (DTO with validation annotations)
-   - `RegisterUserResponse.java` (DTO)
+   - `RegisterUserRequest.java`
+   - `RegisterUserResponse.java`
    - `UserService.java`
    - `UserController.java`
-   - Potentially a `GlobalExceptionHandler.java`
-4. **Run the build** — it compiles the project with `mvn compile` or `mvn test`
-5. **Fix errors** — if the build fails, it reads the error and makes corrections automatically
+   - `GlobalExceptionHandler.java`
 
-Do not interrupt this process. Watch what it does — you will evaluate it in the next step.
+4. **Run the build**  
+   It compiles the project using Maven.
 
-**Expected duration:** 3–6 minutes depending on your machine and Q tier.
+5. **Fix errors**  
+   If the build fails, it reads the error and attempts to correct the issue automatically.
+
+Do not interrupt the process. Watch what it does carefully because you will review the result in the next step.
+
+**Expected duration:** 3–6 minutes depending on your machine and Amazon Q Developer tier.
 
 ---
 
-### Step 7 — Review the generated implementation
+## Step 7 — Review the Generated Implementation
 
-Once the agent stops, open each generated file and check the following:
+Once the agent stops, open each generated file and review the implementation.
 
-#### User.java (Entity)
-- [ ] Has `@Entity` and `@Table(name = "users")`
+### Review `User.java` Entity
+
+Check the following:
+
+- [ ] Has `@Entity`
+- [ ] Has `@Table(name = "users")`
 - [ ] Has `@Id` with `@GeneratedValue`
-- [ ] Has `email`, `firstName`, `lastName`, `passwordHash`, `createdAt` fields
-- [ ] `createdAt` is populated automatically (`@CreationTimestamp` or equivalent)
+- [ ] Has `email`, `firstName`, `lastName`, `passwordHash`, and `createdAt` fields
+- [ ] `createdAt` is populated automatically using `@CreationTimestamp` or equivalent logic
 - [ ] Email field has `@Column(unique = true)`
 
-#### RegisterUserRequest.java (DTO)
-- [ ] Has `@NotBlank` on firstName, lastName, password
-- [ ] Has `@Email` and `@NotBlank` on email
-- [ ] Does NOT expose or contain a `passwordHash` field
+---
 
-#### UserService.java
-- [ ] Uses `BCryptPasswordEncoder` (or `PasswordEncoder` injected via Spring)
+### Review `RegisterUserRequest.java` DTO
+
+Check the following:
+
+- [ ] Has `@NotBlank` on `firstName`
+- [ ] Has `@NotBlank` on `lastName`
+- [ ] Has `@NotBlank` on `password`
+- [ ] Has `@Email` and `@NotBlank` on `email`
+- [ ] Does not expose or contain a `passwordHash` field
+
+---
+
+### Review `UserService.java`
+
+Check the following:
+
+- [ ] Uses `BCryptPasswordEncoder` or an injected `PasswordEncoder`
 - [ ] Checks for duplicate email before saving
-- [ ] Throws a specific exception for duplicate email (not a generic RuntimeException)
-- [ ] Never stores the raw password — only the BCrypt hash
+- [ ] Throws a specific exception for duplicate email
+- [ ] Does not use a generic `RuntimeException` for duplicate email
+- [ ] Never stores the raw password
+- [ ] Stores only the BCrypt hash
 
-#### UserController.java
+---
+
+### Review `UserController.java`
+
+Check the following:
+
 - [ ] Endpoint is mapped to `POST /api/v1/users/register`
 - [ ] Uses `@Valid` on the request body parameter
 - [ ] Returns `ResponseEntity` with status `201 Created`
-- [ ] Does NOT return the password hash in the response
-
-#### Global Exception Handler (if generated)
-- [ ] Catches `MethodArgumentNotValidException` and returns 400 with field errors
-- [ ] Catches duplicate email exception and returns 409
+- [ ] Does not return the password hash in the response
 
 ---
 
-### Step 8 — Ask Q to fix a problem
+### Review `GlobalExceptionHandler.java`, If Generated
 
-If you notice any issue in the review above (e.g. the password hash is being returned in the response, or the endpoint URL is wrong), **ask the agent to fix it** using the chat panel. Do not edit the file manually.
+Check the following:
 
-Example:
-```
+- [ ] Catches `MethodArgumentNotValidException`
+- [ ] Returns HTTP `400 Bad Request` with field-level validation errors
+- [ ] Catches the duplicate email exception
+- [ ] Returns HTTP `409 Conflict` for duplicate email
+
+---
+
+## Step 8 — Ask Q to Fix a Problem
+
+If you notice any issue during the review, ask the agent to fix it using the chat panel.
+
+Do not edit the file manually.
+
+For example, if the response body returns the password hash, ask:
+
+```text
 The response body is returning the passwordHash field. Remove it from the 
 response — the API should never expose hashed passwords.
 ```
 
-Watch the agent make the change. This is the core skill: **directing the agent via language, not by typing code yourself**.
+Watch the agent make the change.
+
+This is the core skill of the lab: **directing the agent through language instead of manually changing the code yourself**.
 
 ---
 
-### Step 9 — Run the application
+## Step 9 — Run the Application
 
-Start the application to verify it compiles and runs:
+Start the application:
 
 ```bash
 mvn spring-boot:run
 ```
 
-If PostgreSQL is not available locally, the application will fail to connect to the database — this is expected. The important thing is that **the project compiles without errors**.
+If PostgreSQL is not available locally, the application may fail to connect to the database. That is expected.
 
-If using an H2 in-memory database for the lab (check with your instructor), the full application will start and you can test the endpoint:
+For this lab, the most important checkpoint is that the project **compiles without errors**.
+
+If your instructor has configured H2 in-memory database for the lab, the full application should start and you can test the endpoint.
+
+Use the following request:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/users/register \
@@ -229,9 +355,12 @@ curl -X POST http://localhost:8080/api/v1/users/register \
 ```
 
 Expected response:
-```json
-HTTP/1.1 201 Created
 
+```http
+HTTP/1.1 201 Created
+```
+
+```json
 {
   "id": 1,
   "firstName": "Jane",
@@ -243,7 +372,9 @@ HTTP/1.1 201 Created
 
 ---
 
-### Step 10 — Commit the implementation
+## Step 10 — Commit the Implementation
+
+Commit the generated implementation:
 
 ```bash
 git add .
@@ -260,41 +391,88 @@ Generated using Amazon Q Developer /dev agent — Lab 1"
 
 ---
 
-## Lab Completion Checklist
+# Lab Completion Checklist
 
-- [ ] Used `/dev` agent mode (not chat mode) to implement the feature
-- [ ] All four layers generated: Entity, Repository, Service, Controller
-- [ ] Password is hashed with BCrypt — never stored in plain text
+- [ ] Used `/dev` agent mode instead of chat mode to implement the feature
+- [ ] Entity, Repository, Service, and Controller layers were generated
+- [ ] Password is hashed with BCrypt
+- [ ] Plain text password is never stored
 - [ ] Endpoint is `POST /api/v1/users/register`
-- [ ] Returns 201, 400, and 409 responses correctly
-- [ ] Project compiles without errors (`mvn compile` exits 0)
-- [ ] Implementation committed to Git
+- [ ] API returns `201 Created` for successful registration
+- [ ] API returns `400 Bad Request` for validation errors
+- [ ] API returns `409 Conflict` for duplicate email
+- [ ] Project compiles without errors using `mvn compile`
+- [ ] Implementation is committed to Git
 
 ---
 
-## Discussion Questions
+# Discussion Questions
 
-After completing the lab, consider:
+After completing the lab, discuss the following:
 
 1. What did the agent do well without being told explicitly?
 2. What did you have to correct or guide it on?
 3. How long would this implementation take if you had written it manually?
-4. What parts of the generated code would you want to review most carefully before merging to production?
+4. What parts of the generated code would you review most carefully before merging to production?
 
 These questions will be discussed during the debrief before the break.
 
 ---
 
-## Troubleshooting
+# Troubleshooting
 
-**The /dev command is not available**  
-Make sure you are signed in to Amazon Q Developer. In VS Code, check the bottom status bar for the Q sign-in status. Re-authenticate if needed.
+## The `/dev` Command Is Not Available
 
-**The agent generated files in the wrong package**  
-Ask the agent: *"Move all the generated files into the `com.training.userservice` package."*
+Make sure you are signed in to Amazon Q Developer.
 
-**The build fails with a missing dependency**  
-Check that `spring-boot-starter-security` is in `pom.xml`. If it is missing, ask the agent: *"Add the Spring Security dependency to pom.xml and configure it to allow unauthenticated access to the registration endpoint."*
+In VS Code, check the bottom status bar for Q sign-in status. Re-authenticate if required.
 
-**The agent stops mid-implementation**  
-Type `/dev continue` or simply describe the remaining work: *"Continue implementing the UserService — the UserController has been created but the service class is missing."*
+---
+
+## The Agent Generated Files in the Wrong Package
+
+Ask the agent:
+
+```text
+Move all the generated files into the com.training.userservice package.
+```
+
+If you used the Spring Initializr link from this lab, your package may be:
+
+```text
+com.hexaware
+```
+
+In that case, ask the agent:
+
+```text
+Move all the generated files into the com.hexaware package.
+```
+
+---
+
+## The Build Fails with a Missing Dependency
+
+Check that `spring-boot-starter-security` is present in `pom.xml`.
+
+If it is missing, ask the agent:
+
+```text
+Add the Spring Security dependency to pom.xml and configure it to allow unauthenticated access to the registration endpoint.
+```
+
+---
+
+## The Agent Stops Mid-Implementation
+
+Ask the agent to continue:
+
+```text
+/dev continue
+```
+
+Or describe the remaining work clearly:
+
+```text
+Continue implementing the UserService — the UserController has been created but the service class is missing.
+```
