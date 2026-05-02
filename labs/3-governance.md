@@ -1,7 +1,7 @@
 # Workshop 1 — Designing Your Agent Governance Model
 
 **Module:** 1.3 — Governing Frontier Agents (Layer 1)
-**Duration:** 45 minutes | **Time Slot:** 10:45 – 11:30 AM
+**Duration:** 45 minutes |
 **Deliverable:** `agent-governance.md` — a documented governance policy committed to `.kiro/governance/`
 
 ---
