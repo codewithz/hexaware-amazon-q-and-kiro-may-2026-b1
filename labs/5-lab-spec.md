@@ -2,7 +2,7 @@
 
 **Module:** 1.5 — Spec-Driven Development (Layer 2)
 **Duration:** 60 minutes
-**Time Slot:** 13:45 – 14:45 PM
+
 **Deliverable:** A complete, approved spec committed to `.kiro/specs/inventory-service/`
 
 ---
