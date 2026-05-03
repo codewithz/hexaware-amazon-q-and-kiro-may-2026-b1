@@ -2,7 +2,7 @@
 
 **Day:** 2  
 **Layer:** Layer 3 (Custom Agents)  
-**Duration:** 75 minutes 
+**Duration:** 75 minutes (9:30–10:45)  
 **Tool:** Kiro IDE  
 **Deliverable:** Three custom agents committed to `.kiro/agents/` — code-review-agent, test-generator-agent, docs-agent — all verified working
 
@@ -82,7 +82,7 @@ code .kiro/agents/code-review-agent.md
 
 Paste this content **exactly**:
 
-```markdown
+```text
 ---
 name: Code Review Agent
 description: Reviews Java and Spring Boot code for compliance with architecture standards, testing conventions, and API design rules. Use when reviewing a class, method, or pull request. Invoke with @code-review-agent.
@@ -142,7 +142,7 @@ Check for violations in this order:
 
 Always report findings in this exact format:
 
-```
+~~~~
 ## Code Review: [ClassName.java]
 
 ### Critical Violations (must fix before merge)
@@ -168,7 +168,7 @@ Fix required: [Specific instruction for the developer]
 ### Summary
 [N] critical, [N] high, [N] medium violations found.
 [Merge recommendation: APPROVE / REQUEST CHANGES / BLOCK]
-```
+~~~~
 
 ## Constraints
 - Never modify any file — you have read-only access
@@ -214,7 +214,7 @@ code .kiro/agents/test-generator-agent.md
 
 Paste this content:
 
-```markdown
+```text
 ---
 name: Test Generator Agent
 description: Generates unit and integration tests for Java/Spring Boot classes. Reads the class under test, generates appropriate tests following team standards, writes them to the test directory, and runs them to verify they pass. Invoke with @test-generator-agent.
@@ -260,7 +260,7 @@ feature specs.
 
 ## Test Structure (AAA — from testing-standards.md)
 Every test must have this structure:
-```java
+~~~~java
 @Test
 void should[Behaviour]_when[Condition]() {
     // Arrange
@@ -272,7 +272,7 @@ void should[Behaviour]_when[Condition]() {
     // Assert
     [verify the result with assertThat]
 }
-```
+~~~~
 
 ## Integration Test Requirements
 - Every REST endpoint must have a corresponding `@SpringBootTest` integration test
@@ -328,7 +328,7 @@ code .kiro/agents/docs-agent.md
 
 Paste this content:
 
-```markdown
+```text
 ---
 name: Docs Agent
 description: Keeps Javadoc, README, and API documentation in sync with the codebase. Adds or updates Javadoc on public classes and methods, updates README endpoint tables, and adds SpringDoc OpenAPI annotations to controllers. Invoke with @docs-agent.
@@ -347,7 +347,7 @@ You keep documentation accurate and current — you do not write code.
 ### Javadoc
 Add or update Javadoc for all public classes and methods. Use this template:
 
-```java
+~~~~java
 /**
  * [One-sentence summary of what this class/method does].
  *
@@ -358,28 +358,28 @@ Add or update Javadoc for all public classes and methods. Use this template:
  * @return [description of what is returned, including what happens in edge cases]
  * @throws ExceptionType [when this exception is thrown]
  */
-```
+~~~~
 
 ### README Endpoint Table
 When a new REST endpoint is added, update the API Endpoints section of README.md.
 Use this table format:
 
-```markdown
+~~~~markdown
 | Method | Path | Description | Request Body | Response |
 |---|---|---|---|---|
 | POST | /api/v1/users/register | Register a new user | RegisterUserRequest | 201 UserResponse |
-```
+~~~~
 
 ### SpringDoc OpenAPI Annotations
 Add SpringDoc annotations to all REST controllers for automatic API documentation:
 
-```java
+~~~~java
 @Operation(summary = "Brief summary", description = "Longer description of what this endpoint does")
 @ApiResponse(responseCode = "201", description = "Resource created successfully",
     content = @Content(schema = @Schema(implementation = UserResponse.class)))
 @ApiResponse(responseCode = "400", description = "Invalid request body")
 @ApiResponse(responseCode = "409", description = "Resource already exists")
-```
+~~~~
 
 ## What You Do NOT Do
 - Do not modify business logic
