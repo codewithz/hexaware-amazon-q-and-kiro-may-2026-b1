@@ -68,8 +68,9 @@ Paste this content **exactly** — this is valid JSON:
 
 ```json
 {
+  "enabled": true,
   "name": "Javadoc on Save",
-  "description": "Automatically adds or updates Javadoc on public methods when a Java source file is saved in the main source directory.",
+  "description": "Automatically invokes the docs-agent to add or update Javadoc, README endpoint tables, and SpringDoc annotations whenever a Java file is saved.",
   "version": "1",
   "when": {
     "type": "fileEdited",
@@ -79,7 +80,7 @@ Paste this content **exactly** — this is valid JSON:
   },
   "then": {
     "type": "askAgent",
-    "prompt": "@docs-agent A Java source file was just saved. Review the file and add or update Javadoc for any public or protected methods and classes that are missing it or have outdated Javadoc that does not match the current parameters or return type. Rules: only add Javadoc to public and protected members — never private; do not rewrite Javadoc that is already accurate; do not add comments inside method bodies; skip trivial getters and setters; read the implementation before writing the Javadoc so it is accurate. After completing, report which methods had Javadoc added or updated and which were already correct."
+    "prompt": "Invoke the docs-agent sub-agent to review this file and add or update Javadoc for all public classes and methods. Update README.md if any REST endpoints were added or modified. Add SpringDoc OpenAPI annotations to controllers if missing. Use invokeSubAgent with the docs-agent."
   }
 }
 ```
