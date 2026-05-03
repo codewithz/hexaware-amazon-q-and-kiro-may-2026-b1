@@ -33,7 +33,7 @@ The 5 hooks you will build today cover the full development cycle:
 
 | Hook file | Trigger type | Action | When it fires |
 |---|---|---|---|
-| `javadoc-on-save.kiro.hook` | `fileSaved` | `askAgent` | Any `.java` file saved in `src/main/` |
+| `javadoc-on-save.kiro.hook` | `fileEdited` | `askAgent` | Any `.java` file saved in `src/main/` |
 | `test-on-new-class.kiro.hook` | `fileCreated` | `askAgent` | New `.java` file created in `src/main/` |
 | `security-lint-on-commit.kiro.hook` | `promptSubmit` | `askAgent` | User submits any prompt |
 | `pr-description-on-push.kiro.hook` | `postTaskExecution` | `askAgent` | A spec task is completed |
@@ -72,7 +72,7 @@ Paste this content **exactly** — this is valid JSON:
   "description": "Automatically adds or updates Javadoc on public methods when a Java source file is saved in the main source directory.",
   "version": "1",
   "when": {
-    "type": "fileSaved",
+    "type": "fileEdited",
     "patterns": [
       "src/main/java/**/*.java"
     ]
@@ -302,11 +302,138 @@ Common mistakes that prevent hooks from loading:
 - File has `.md` extension instead of `.kiro.hook`
 - Trailing comma after the last key in a JSON object (invalid JSON)
 - Using single quotes instead of double quotes in JSON
-- Incorrect `"type"` value in the `"when"` block — must be exactly: `fileSaved`, `fileCreated`, `promptSubmit`, `postTaskExecution`, or `userTriggered`
+- Incorrect `"type"` value in the `"when"` block — must be exactly: `fileEdited`, `fileCreated`, `promptSubmit`, `postTaskExecution`, or `userTriggered`
 
 ---
 
-## Step 8 — Commit the Hooks
+## Step 8 — Where to See Hook Output
+
+This is the most common point of confusion in this lab. Hook output does **not** appear in the main chat panel body where you normally talk to the agent. It has its own dedicated view. Here is exactly where to look.
+
+---
+
+### Location 1 — Task List (hook currently running)
+
+When a hook fires, Kiro opens a background agent task. To see it:
+
+1. Look at the **top of the Kiro chat panel** — there is a row of small icon buttons above the chat input
+2. Click the **Task list** button (it looks like a bullet list icon, usually the second or third icon in that row)
+3. You will see a section called **Current Task** — click it
+4. The full agent conversation for the hook opens: every file the agent read, every change it made, every decision it took
+
+This is the view to show your candidates when a hook fires and they say "nothing happened." Something almost certainly did happen — it just ran silently in the background. Task list is where it went.
+
+**What it looks like while running:**
+
+```
+Current Task — Javadoc on Save
+  ✅ Reading: src/main/java/com/training/service/InventoryService.java
+  ✅ Writing: src/main/java/com/training/service/InventoryService.java
+  → Added Javadoc to 3 methods: createReservation, releaseReservation, getStockLevel
+  → 2 methods already had accurate Javadoc: findById, validateRequest
+```
+
+---
+
+### Location 2 — History (hook already finished)
+
+If the hook has already completed by the time you go to look for it:
+
+1. In the Kiro chat panel, click the **History** button (clock icon, in the same row of buttons at the top of the panel)
+2. Each past hook run appears as a separate entry, labelled with the hook name and a timestamp
+3. Click any entry to expand the full agent conversation for that run
+
+History persists for the entire session. You can go back and review what any hook did, including hooks that fired hours ago, even if you were not watching when they triggered.
+
+---
+
+### Location 3 — Agent Hooks Panel (confirm it fired at all)
+
+Before checking Task list or History, first confirm the hook actually triggered:
+
+1. Click the **ghost icon** in the left sidebar to open the Kiro panel
+2. Scroll to the **Agent Hooks** section
+3. Each hook shows a small status indicator
+4. When a hook fires, its indicator briefly lights up or shows a spinner
+5. After completion, it shows the last run time (e.g. "Last run: 2 minutes ago")
+
+If the last run time does not update after you trigger the event, the hook did not fire. This means the trigger condition was not met — check the file pattern or trigger type.
+
+---
+
+### Location 4 — The actual files changed (for `askAgent` hooks)
+
+For hooks that write files (like `javadoc-on-save` and `test-on-new-class`), the most direct confirmation is checking the file itself:
+
+```bash
+# See what changed after saving a Java file
+git diff src/main/java/com/training/service/InventoryService.java
+```
+
+If the hook ran successfully, you will see Javadoc additions in the diff. If there is no diff, either the file already had accurate Javadoc (the hook ran but found nothing to change) or the hook did not fire.
+
+---
+
+### Reading a Hook Run End-to-End
+
+Here is what a full hook run looks like in the Task list view, using `javadoc-on-save` as the example:
+
+```
+Hook fired: Javadoc on Save
+Trigger: fileEdited — InventoryService.java was saved
+
+Agent action:
+  1. Reading file: src/main/java/com/training/service/InventoryService.java
+  2. Checking public methods for missing Javadoc...
+     - createReservation(CreateReservationRequest): ❌ Missing Javadoc
+     - releaseReservation(UUID): ❌ Missing Javadoc  
+     - getStockLevel(UUID): ✅ Javadoc already present and accurate
+     - findById(UUID): Skipped (private method)
+  3. Writing updated file with Javadoc added to 2 methods
+  
+Result: Added Javadoc to createReservation and releaseReservation.
+        getStockLevel already had accurate documentation.
+```
+
+---
+
+### What to Do If You See Nothing
+
+Work through this checklist in order:
+
+**1. Hook not in the Hooks panel at all**
+- The file has `.md` extension instead of `.kiro.hook`
+- The JSON is invalid — run `python3 -m json.tool .kiro/hooks/your-hook.kiro.hook`
+- The `"type"` value is wrong — must be one of: `fileEdited`, `fileCreated`, `fileDeleted`, `promptSubmit`, `agentStop`, `preToolUse`, `postToolUse`, `preTaskExecution`, `postTaskExecution`, `userTriggered`
+
+**2. Hook is in the panel but does not fire**
+- For `fileEdited`/`fileCreated`: the file path does not match the `"patterns"` glob — test with `python3 -c "import fnmatch; print(fnmatch.fnmatch('src/main/java/com/training/service/InventoryService.java', 'src/main/java/**/*.java'))"`
+- For `promptSubmit`: the hook fires on every prompt — if you do not see it, you may be looking in the wrong place (check Task list, not the main chat)
+- For `userTriggered`: you must click the ▶ play button next to the hook in the Agent Hooks panel — it will not fire automatically
+
+**3. Hook fires but output is empty**
+- The agent ran but had nothing to do (e.g. all Javadoc was already present)
+- Check History to see the agent's reasoning — it will explain why it made no changes
+
+**4. Hook fires but changes are wrong**
+- The hook prompt needs to be more specific — edit the `"prompt"` field in the `.kiro.hook` file and save; changes take effect immediately without restarting Kiro
+
+---
+
+### Quick Reference Table
+
+| What you want to see | Where to look |
+|---|---|
+| Hook running right now | Chat panel top → **Task list** → Current Task |
+| Hook that already finished | Chat panel top → **History** → select the hook run |
+| Whether the hook fired at all | Kiro panel → **Agent Hooks** → check last run time |
+| What files the hook changed | Terminal → `git diff` |
+| Why the hook is not appearing | Run JSON validator → check `"type"` value |
+| Why the hook is not firing | Check file pattern glob matches your file path |
+
+---
+
+## Step 9 — Commit the Hooks
 
 ```bash
 # Verify all 5 files exist with the correct extension
@@ -321,7 +448,7 @@ ls -la .kiro/hooks/
 git add .kiro/hooks/
 git commit -m "feat: Layer 4 — 5-hook automation pipeline
 
-Hook 1: javadoc-on-save (fileSaved, src/main/**/*.java)
+Hook 1: javadoc-on-save (fileEdited, src/main/**/*.java)
   → askAgent: adds Javadoc to public methods on every save
 
 Hook 2: test-on-new-class (fileCreated, src/main/**/*.java)
@@ -365,11 +492,15 @@ Every Kiro hook file follows this JSON structure:
 
 | Type | When it fires | Supports `patterns`? |
 |---|---|---|
-| `fileSaved` | A file matching the pattern is saved | ✅ Yes |
+| `fileEdited` | A file matching the pattern is saved/edited | ✅ Yes |
 | `fileCreated` | A file matching the pattern is created | ✅ Yes |
 | `fileDeleted` | A file matching the pattern is deleted | ✅ Yes |
 | `promptSubmit` | The user submits any prompt | ❌ No |
-| `postTaskExecution` | A spec task is marked complete | ❌ No |
+| `agentStop` | The agent finishes responding | ❌ No |
+| `preToolUse` | Before the agent invokes a tool | ❌ No |
+| `postToolUse` | After the agent invokes a tool | ❌ No |
+| `preTaskExecution` | Before a spec task starts | ❌ No |
+| `postTaskExecution` | After a spec task completes | ❌ No |
 | `userTriggered` | Manual — you click the play button | ❌ No |
 
 **Valid `then.type` values:**
