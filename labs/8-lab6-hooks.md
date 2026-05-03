@@ -12,10 +12,12 @@
 
 By the end of this lab you will have:
 - Created the `.kiro/hooks/` directory and written all 5 hook definition files
-- Understood the three hook event types: file save, commit, and manual trigger
-- Understood the difference between `autopilot` and `supervised` hook modes
+- Understood the correct Kiro hook file format (JSON, `.kiro.hook` extension)
+- Understood the available trigger types: File Save, File Create, Prompt Submit, Post Task Execution, and Manual
+- Understood the difference between `askAgent` (AI-powered) and `shellCommand` (deterministic) hook actions
 - Seen each hook fire in real time by triggering the relevant event
-- Understood how hooks turn individual agents into a team-wide automation pipeline
+
+> **Important — file format:** Kiro hook files are **JSON** files with the **`.kiro.hook`** extension. They are NOT Markdown files. If you create `.md` files in `.kiro/hooks/`, Kiro will not recognise them as hooks.
 
 ---
 
@@ -23,27 +25,19 @@ By the end of this lab you will have:
 
 Agents respond when you invoke them. Hooks respond when **events happen**.
 
-Without hooks, a developer has to remember to:
-- Run the code review agent before committing
-- Ask the docs agent to update Javadoc after changing a class
-- Ask the test generator agent to create tests for a new class
-- Generate a PR description before opening a PR
+Without hooks, a developer has to remember to run the code review agent before committing, ask the docs agent to update Javadoc after changing a class, and generate a PR description before opening a PR.
 
-With hooks, these things happen automatically. The developer saves a file, commits, or pushes — and the pipeline fires.
+With hooks, these things happen automatically. The developer saves a file or commits — and the pipeline fires.
 
 The 5 hooks you will build today cover the full development cycle:
 
-| Hook | Trigger | Agent | Mode |
+| Hook file | Trigger type | Action | When it fires |
 |---|---|---|---|
-| `javadoc-on-save` | Any `.java` file saved | `docs-agent` | Autopilot |
-| `test-on-new-class` | New class created in `src/main/` | `test-generator-agent` | Supervised |
-| `security-lint-on-commit` | Developer types "ready to commit" | `security-agent` (preview) | Supervised |
-| `pr-description-on-push` | Spec task marked complete | `pr-agent` (preview) | Autopilot |
-| `doc-sync-on-stop` | Manual trigger | `docs-agent` | Supervised |
-
-**Autopilot:** The hook fires and the agent acts without asking permission. Use for low-risk, easily-reversible operations (adding Javadoc, generating a PR description).
-
-**Supervised:** The hook fires but shows you what it wants to do and waits for approval. Use for operations you want to review before they happen (running tests, security checks).
+| `javadoc-on-save.kiro.hook` | `fileSaved` | `askAgent` | Any `.java` file saved in `src/main/` |
+| `test-on-new-class.kiro.hook` | `fileCreated` | `askAgent` | New `.java` file created in `src/main/` |
+| `security-lint-on-commit.kiro.hook` | `promptSubmit` | `askAgent` | User submits any prompt |
+| `pr-description-on-push.kiro.hook` | `postTaskExecution` | `askAgent` | A spec task is completed |
+| `doc-sync-on-stop.kiro.hook` | `userTriggered` | `askAgent` | Manual click in the Hooks panel |
 
 ---
 
@@ -61,455 +55,340 @@ ls -la .kiro/
 
 ## Step 2 — Hook 1: `javadoc-on-save`
 
-This hook fires every time a Java source file is saved. It invokes the docs agent to add or update Javadoc on changed methods. Because Javadoc is purely additive and easily reviewed in a diff, this runs in autopilot mode.
+This hook fires every time a Java source file is saved in the main source directory. It sends a prompt to the docs agent to add or update Javadoc on any methods that are missing it.
 
-Create `.kiro/hooks/javadoc-on-save.md`:
+Create `.kiro/hooks/javadoc-on-save.kiro.hook`:
 
 ```bash
-touch .kiro/hooks/javadoc-on-save.md
-code .kiro/hooks/javadoc-on-save.md
+touch .kiro/hooks/javadoc-on-save.kiro.hook
+code .kiro/hooks/javadoc-on-save.kiro.hook
 ```
 
-Paste this content:
+Paste this content **exactly** — this is valid JSON:
 
-```text
----
-name: Javadoc on Save
-description: Automatically adds or updates Javadoc on public methods when a Java source file is saved.
-trigger:
-  type: fileEvent
-  event: onSave
-  filePattern: "src/main/java/**/*.java"
-agent: docs-agent
-mode: autopilot
-enabled: true
----
-
-# Hook Instructions
-
-When this hook fires, you have been given a Java source file that was just saved.
-
-## Your Task
-1. Read the file that was saved
-2. Identify all public methods and public classes that are missing Javadoc, or where Javadoc is outdated (does not match the current parameters or return type)
-3. Add or update Javadoc for only those methods — do not change any other code
-4. Save the file with the updated Javadoc
-
-## Rules
-- Only add Javadoc to `public` and `protected` methods — never to private methods
-- Do not rewrite existing Javadoc that is already accurate
-- Do not add implementation comments inside method bodies
-- Do not rename parameters or change method signatures
-- If a method is trivial (getter/setter), skip it
-- Write Javadoc that accurately describes what the method does — read the implementation first
-
-## Output
-After completing: report which methods had Javadoc added or updated, and which were already correct.
+```json
+{
+  "name": "Javadoc on Save",
+  "description": "Automatically adds or updates Javadoc on public methods when a Java source file is saved in the main source directory.",
+  "version": "1",
+  "when": {
+    "type": "fileSaved",
+    "patterns": [
+      "src/main/java/**/*.java"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A Java source file was just saved. Review the file and add or update Javadoc for any public or protected methods and classes that are missing it or have outdated Javadoc that does not match the current parameters or return type. Rules: only add Javadoc to public and protected members — never private; do not rewrite Javadoc that is already accurate; do not add comments inside method bodies; skip trivial getters and setters; read the implementation before writing the Javadoc so it is accurate. After completing, report which methods had Javadoc added or updated and which were already correct."
+  }
+}
 ```
+
+### Verify Hook 1 Appears in the IDE
+
+1. Open the **Kiro panel** (ghost icon in left sidebar)
+2. Scroll to the **Agent Hooks** section
+3. You should see **"Javadoc on Save"** listed
+4. If it does not appear, check the file has the `.kiro.hook` extension and contains valid JSON (`cat .kiro/hooks/javadoc-on-save.kiro.hook | python3 -m json.tool`)
 
 ### Test Hook 1
 
 1. Open `InventoryService.java` in Kiro IDE
-2. Make a trivial change to a method — add a space somewhere, then remove it (just to trigger a save)
-3. Save the file (Ctrl+S / Cmd+S)
-4. Watch the Kiro panel — the hook should fire automatically
-5. Check the file — Javadoc should have been added or updated on public methods
+2. Add a space anywhere inside a method, then save the file (Ctrl+S / Cmd+S)
+3. Watch the Kiro panel — a task should appear automatically under Agent Hooks
+4. Click **Task list** at the top of the chat panel to see the hook running
+5. Check the file after — Javadoc should have been added to public methods
 
 ---
 
 ## Step 3 — Hook 2: `test-on-new-class`
 
-This hook fires when a new Java class is created in the `src/main/` directory. It invokes the test generator agent to create a corresponding test class. This runs in **supervised mode** because test generation is a non-trivial operation — you want to review the proposed tests before they are written.
+This hook fires when a new Java class is created in `src/main/`. It proposes a test skeleton for the new class. The agent will show a plan and wait — it does not create files without your review because the `askAgent` action runs in the chat panel where you can respond.
 
-Create `.kiro/hooks/test-on-new-class.md`:
+Create `.kiro/hooks/test-on-new-class.kiro.hook`:
 
 ```bash
-touch .kiro/hooks/test-on-new-class.md
-code .kiro/hooks/test-on-new-class.md
+touch .kiro/hooks/test-on-new-class.kiro.hook
+code .kiro/hooks/test-on-new-class.kiro.hook
 ```
 
 Paste this content:
 
-```text
----
-name: Test on New Class
-description: Proposes a test skeleton when a new Java class is created in the main source directory.
-trigger:
-  type: fileEvent
-  event: onCreate
-  filePattern: "src/main/java/**/*.java"
-agent: test-generator-agent
-mode: supervised
-enabled: true
----
-
-# Hook Instructions
-
-A new Java class has just been created in the project. Your job is to propose
-a test class for it and wait for the developer's approval before writing it.
-
-## Your Task
-1. Read the new class that was created
-2. Identify what type of class it is:
-   - **Service class** → generate unit tests with Mockito mocks
-   - **Controller class** → generate MockMvc integration tests
-   - **Repository class** → generate Testcontainers integration tests
-   - **Entity or DTO class** → skip (no tests needed for data classes)
-   - **Utility or helper class** → generate unit tests
-3. Propose the test class — show the developer what tests you intend to write
-4. Wait for approval before writing anything
-
-## What to Show Before Acting
-Present a plan like this:
-
-~~~~
-New class detected: InventoryService (service class)
-Proposed test file: src/test/java/com/training/service/InventoryServiceTest.java
-
-Proposed tests:
-1. shouldReturnStockLevel_whenProductExists
-2. shouldThrow404Exception_whenProductNotFound
-3. [more tests...]
-
-Shall I create the test file? (Type 'yes' to proceed, or describe changes you want)
-~~~~
-
-## After Approval
-Once the developer approves:
-1. Write the test file at `src/test/java/[same package]/[ClassName]Test.java`
-2. Run `mvn test -Dtest=[TestClassName] -q`
-3. Report the results
-4. If any tests fail, show the failure and fix the test
-
-## Rules
-- Always follow testing-standards.md naming and structure
-- Never create tests for entities, DTOs, or records
-- Always propose before acting — do not create files without approval
+```json
+{
+  "name": "Test on New Class",
+  "description": "Proposes a test skeleton when a new Java class is created in the main source directory. Shows a plan and waits for approval before writing any files.",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      "src/main/java/**/*.java"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new Java class was just created. Read the new class and identify what type it is: Service class (generate unit tests with Mockito), Controller class (generate MockMvc integration tests), Repository class (generate Testcontainers integration tests), Entity or DTO class (skip — no tests needed), or Utility class (generate unit tests). Then propose a test plan: show the proposed test file path and list the test method names you intend to write using the should[Behaviour]_when[Condition] naming convention from testing-standards.md. Ask the developer to confirm before creating any files. Only write the test file after the developer types 'yes'. After writing, run mvn test -Dtest=[TestClassName] -q and report the results."
+  }
+}
 ```
 
 ### Test Hook 2
 
-1. Create a new empty Java class in `src/main/java/com/training/service/`:
-   ```bash
-   touch src/main/java/com/training/service/PricingService.java
-   ```
-2. Add a minimal class body:
-   ```java
-   package com.training.service;
-   public class PricingService {
-       public double calculateDiscount(double price, int quantity) {
-           return quantity > 10 ? price * 0.1 : 0.0;
-       }
-   }
-   ```
-3. Save the file
-4. Watch the Kiro panel — the hook fires and proposes tests
-5. Review the proposed tests and type `yes` to approve if they look correct
+1. Create a new Java class in `src/main/java/com/training/service/`:
+
+```bash
+cat > src/main/java/com/training/service/PricingService.java << 'EOF'
+package com.training.service;
+
+public class PricingService {
+    public double calculateDiscount(double price, int quantity) {
+        return quantity > 10 ? price * 0.1 : 0.0;
+    }
+}
+EOF
+```
+
+2. Save the file — the hook fires automatically
+3. In the Kiro chat panel, the agent proposes test method names
+4. Type `yes` to approve — the test file is created and tests run
 
 ---
 
 ## Step 4 — Hook 3: `security-lint-on-commit`
 
-This hook fires when you type specific words in the Kiro chat — in this case, "ready to commit". It uses a prompt event trigger rather than a file event. This means the hook is under your control — it fires when you decide you are ready to commit, not automatically.
+This hook uses the `promptSubmit` trigger — it fires on **every prompt you submit** and appends security-awareness context to it. The most practical use is combining it with a phrase pattern check.
 
-This runs in **supervised mode** because a security finding should always involve a human decision before proceeding.
+> **Note on `promptSubmit`:** This trigger fires on every prompt, not just "ready to commit." The hook appends its prompt to yours. The most effective pattern is to make the hook instruction conditional — it only acts meaningfully when the user's prompt contains commit-related language.
 
-Create `.kiro/hooks/security-lint-on-commit.md`:
+Create `.kiro/hooks/security-lint-on-commit.kiro.hook`:
 
 ```bash
-touch .kiro/hooks/security-lint-on-commit.md
-code .kiro/hooks/security-lint-on-commit.md
+touch .kiro/hooks/security-lint-on-commit.kiro.hook
+code .kiro/hooks/security-lint-on-commit.kiro.hook
 ```
 
 Paste this content:
 
-```text
----
-name: Security Lint on Commit
-description: Runs a targeted security scan on staged files when the developer indicates they are ready to commit. Blocks the commit workflow if Critical or High issues are found.
-trigger:
-  type: promptEvent
-  pattern: "ready to commit"
-agent: security-agent
-mode: supervised
-enabled: true
----
-
-# Hook Instructions
-
-The developer has indicated they are ready to commit. Run a security scan on
-all files that are currently staged (`git diff --cached --name-only`).
-
-## Your Task
-1. Run `git diff --cached --name-only` to get the list of staged files
-2. Read each staged Java file
-3. Scan for these security issues:
-   - **Hardcoded secrets**: passwords, API keys, tokens, connection strings in source files
-   - **SQL injection risk**: string concatenation in queries
-   - **Missing input validation**: REST controller methods accepting user input without `@Valid`
-   - **Sensitive data exposure**: PII written to log statements
-   - **Insecure deserialization**: `ObjectInputStream` or unvalidated JSON parsing
-
-4. Report findings in this format:
-
-~~~~
-## Pre-Commit Security Scan
-
-Files scanned: [N]
-Issues found: [N]
-
-### Critical Issues (BLOCK COMMIT)
-[Issue details with file:line, description, fix required]
-
-### High Issues (BLOCK COMMIT)  
-[Issue details]
-
-### Medium Issues (warn but allow commit)
-[Issue details]
-
-### Verdict
-BLOCKED — fix [N] critical/high issues before committing
-OR
-CLEAR — no critical or high issues found. Safe to commit.
-~~~~
-
-5. If verdict is BLOCKED: do not proceed. Wait for the developer to fix the issues.
-6. If verdict is CLEAR: inform the developer they can proceed.
-
-## Rules
-- Shell access is for `git diff --cached --name-only` only — do not modify, commit, or push anything
-- A single Critical issue is always a BLOCK
-- A single High issue is always a BLOCK
-- Never mark a scan as CLEAR if you found Critical or High issues
+```json
+{
+  "name": "Security Lint on Commit",
+  "description": "Runs a targeted security scan on staged files when the developer's prompt indicates they are ready to commit.",
+  "version": "1",
+  "when": {
+    "type": "promptSubmit"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "If the user's prompt contains words like 'commit', 'ready to commit', 'push', or 'stage', run a security scan on the staged files before proceeding with any other action. To do this: run git diff --cached --name-only to get staged files, read each staged Java file, and check for: hardcoded passwords or API keys, SQL string concatenation in queries, REST controller methods missing @Valid on @RequestBody parameters, email or PII written to log statements. Report findings with file name, line number, and severity (CRITICAL/HIGH/MEDIUM). If any CRITICAL or HIGH issues are found, output BLOCKED and do not proceed until the developer confirms they have fixed the issues. If no CRITICAL or HIGH issues are found, output CLEAR and continue with the original request. If the user's prompt has nothing to do with committing or pushing, ignore this instruction entirely and just respond to the original prompt normally."
+  }
+}
 ```
 
 ### Test Hook 3
 
-1. Stage a file with a deliberate issue (add a hardcoded password temporarily):
-   ```java
-   // Temporarily add this to test the hook
-   private static final String DB_PASSWORD = "mypassword123"; // hardcoded - test only
-   ```
-2. Stage the file: `git add src/main/java/com/training/service/InventoryService.java`
-3. In the Kiro chat panel, type: `ready to commit`
-4. The hook should fire and report the hardcoded password as a Critical issue
-5. Remove the hardcoded password and verify the hook clears on the next run
+1. Stage a file with a deliberate hardcoded secret:
+
+```bash
+# Add temporarily to InventoryService.java for testing:
+# private static final String DB_PASSWORD = "mypassword123";
+git add src/main/java/com/training/service/InventoryService.java
+```
+
+2. In the Kiro chat panel, type: `I'm ready to commit these changes`
+3. The hook fires — the security scan should detect the hardcoded password and output `BLOCKED`
+4. Remove the test password, then type: `ready to commit` again — should output `CLEAR`
 
 ---
 
 ## Step 5 — Hook 4: `pr-description-on-push`
 
-This hook fires when a spec task is marked as complete. It invokes the PR agent to generate a pull request description from the git diff and the completed spec tasks.
+This hook fires after a spec task is completed (`postTaskExecution`). It generates a pull request description from the current branch diff and the completed spec task context.
 
-Create `.kiro/hooks/pr-description-on-push.md`:
+Create `.kiro/hooks/pr-description-on-push.kiro.hook`:
 
 ```bash
-touch .kiro/hooks/pr-description-on-push.md
-code .kiro/hooks/pr-description-on-push.md
+touch .kiro/hooks/pr-description-on-push.kiro.hook
+code .kiro/hooks/pr-description-on-push.kiro.hook
 ```
 
 Paste this content:
 
-```text
----
-name: PR Description on Push
-description: Automatically generates a pull request description from the current branch diff and completed spec tasks when a spec task is marked complete.
-trigger:
-  type: specTaskEvent
-  event: onTaskComplete
-agent: pr-agent
-mode: autopilot
-enabled: true
----
-
-# Hook Instructions
-
-A spec task has just been marked as complete. Generate a pull request description
-that summarises the changes made to implement this task.
-
-## Your Task
-1. Run `git diff main...HEAD --stat` to see which files changed
-2. Run `git diff main...HEAD` to read the actual changes
-3. Read the spec file in `.kiro/specs/` to understand which task was completed
-   and which acceptance criteria it addressed
-4. Generate a PR description using this format:
-
-~~~~markdown
-## Summary
-[2-3 sentences describing what was implemented and why]
-
-## Spec Task Completed
-[Task ID and name from the spec]
-
-## What Changed
-- `[FileName]`: [What changed and why]
-- `[FileName]`: [What changed and why]
-
-## Acceptance Criteria Addressed
-- [ ] [Criterion 1 from spec — ✅ if addressed by this PR, ⬜ if still pending]
-- [ ] [Criterion 2 from spec]
-
-## How to Test
-1. [Step to reproduce the feature]
-2. [Step to verify the acceptance criteria]
-
-## Reviewer Checklist
-- [ ] Constructor injection used (no @Autowired on fields)
-- [ ] All new endpoints have @Valid on request body
-- [ ] Test coverage includes happy path and at least one error case
-- [ ] No hardcoded credentials
-- [ ] Javadoc present on all public methods
-~~~~
-
-5. Output the PR description to the Kiro chat panel so the developer can copy it
-
-## Rules
-- Shell access is for git read commands only — do NOT push, commit, or modify files
-- If there are no uncommitted changes, say so and skip the description
-- The summary must be understandable by a non-technical stakeholder
+```json
+{
+  "name": "PR Description on Push",
+  "description": "Generates a pull request description from the current branch diff and the completed spec task when a spec task is marked complete.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A spec task has just been marked as complete. Generate a pull request description by: (1) running git diff main...HEAD --stat to see which files changed, (2) running git diff main...HEAD to read the actual changes, (3) reading the spec file in .kiro/specs/ to identify the completed task and which acceptance criteria it addresses. Then produce a PR description with these sections: Summary (2-3 sentences understandable by a non-technical stakeholder), Spec Task Completed (task ID and name), What Changed (per file: what changed and why), Acceptance Criteria Addressed (list from spec, mark each as addressed or still pending), How to Test (numbered steps to verify the feature), and Reviewer Checklist (constructor injection used, @Valid on request bodies, tests cover error cases, no hardcoded credentials, Javadoc on public methods). Output the description to the chat panel so the developer can copy it."
+  }
+}
 ```
 
 ### Test Hook 4
 
-1. In the Kiro spec runner (left sidebar → Spec icon), open your inventory-service spec
-2. Mark one task as complete (click the checkbox)
-3. The hook fires and generates a PR description in the chat panel
-4. Review the generated description — verify it references the correct spec task and acceptance criteria
+1. Open the Kiro spec runner (left sidebar → Spec icon)
+2. Open your `inventory-service` spec
+3. Mark one task as complete by clicking its checkbox
+4. The hook fires — a PR description appears in the chat panel
+5. Verify it references the correct spec task and acceptance criteria
 
 ---
 
 ## Step 6 — Hook 5: `doc-sync-on-stop`
 
-This hook is a **manual trigger**. It fires when you click the play button in the Kiro Hooks panel, not automatically. It does a comprehensive documentation sync at the end of a work session.
+This hook uses `userTriggered` — it only fires when you manually click the play button in the Kiro Hooks panel. It does a comprehensive documentation sync at the end of a work session.
 
-Create `.kiro/hooks/doc-sync-on-stop.md`:
+Create `.kiro/hooks/doc-sync-on-stop.kiro.hook`:
 
 ```bash
-touch .kiro/hooks/doc-sync-on-stop.md
-code .kiro/hooks/doc-sync-on-stop.md
+touch .kiro/hooks/doc-sync-on-stop.kiro.hook
+code .kiro/hooks/doc-sync-on-stop.kiro.hook
 ```
 
 Paste this content:
 
-```text
----
-name: Doc Sync on Stop
-description: Performs a comprehensive documentation sync at the end of a work session. Updates README, Javadoc, and OpenAPI annotations. Run manually before pushing a branch.
-trigger:
-  type: manual
-agent: docs-agent
-mode: supervised
-enabled: true
----
-
-# Hook Instructions
-
-This is an end-of-session documentation sync. Read the entire changed codebase
-and bring all documentation up to date.
-
-## Your Task
-1. Run `git diff main...HEAD --name-only` to get the list of changed files
-2. For each changed Java file:
-   - Check if all public methods have accurate Javadoc
-   - Check if any method signature changed (parameters, return type) — Javadoc needs updating
-   - Add or update Javadoc where needed
-3. For each changed controller file:
-   - Check if SpringDoc @Operation and @ApiResponse annotations are present
-   - Add missing annotations
-4. Read `README.md` and compare the API Endpoints table with the current controller files
-   - Add any endpoints that are missing from the table
-   - Remove any endpoints that no longer exist
-   - Update descriptions for endpoints that changed behaviour
-
-## Before Acting
-Present a summary of what you intend to change:
-
-~~~~
-Documentation sync plan:
-- InventoryService.java: 3 methods need Javadoc (createReservation, releaseReservation, fulfilReservation)
-- InventoryController.java: Missing @ApiResponse for 404 on GET /products/{id}/stock
-- README.md: Missing endpoint: DELETE /api/v1/inventory/reservations/{id}
-
-Shall I proceed? (Type 'yes' to apply all changes)
-~~~~
-
-## After Acting
-Report exactly what was changed, file by file.
-
-## Rules
-- Never change business logic — only documentation
-- Always show the plan before applying changes
-- Do not add redundant Javadoc to simple getters/setters
+```json
+{
+  "name": "Doc Sync on Stop",
+  "description": "Performs a comprehensive documentation sync at the end of a work session. Updates Javadoc, README endpoint table, and SpringDoc OpenAPI annotations for all changed files. Run manually before pushing a branch.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Perform an end-of-session documentation sync. Steps: (1) Run git diff main...HEAD --name-only to get all changed files in this branch. (2) For each changed Java file: check if all public methods have accurate Javadoc, check if any method signature changed so Javadoc needs updating, add or update Javadoc where needed. (3) For each changed controller file: check if SpringDoc @Operation and @ApiResponse annotations are present for all endpoints, add any that are missing. (4) Read README.md and compare its API Endpoints table to the current controller files: add missing endpoints, remove endpoints that no longer exist, update descriptions for endpoints that changed. Before making any changes, present a plan listing exactly what you intend to change in each file and wait for the developer to type 'yes' to proceed. After completing, report exactly what was changed file by file. Rules: never change business logic — documentation only; always show the plan before applying changes; skip trivial getters and setters."
+  }
+}
 ```
 
 ### Test Hook 5
 
-1. In the Kiro panel, navigate to the **Hooks** section
-2. Find `doc-sync-on-stop` and click the **play button** (▶)
-3. The hook fires and presents its sync plan
-4. Review the plan and type `yes` to approve
+1. In the Kiro panel, navigate to the **Agent Hooks** section
+2. Find **"Doc Sync on Stop"** and click the **play button** (▶) next to it
+3. The hook fires and the agent presents its sync plan in the chat panel
+4. Review the plan — type `yes` to approve
 5. Verify that README.md and Javadoc are updated
 
 ---
 
 ## Step 7 — Verify All Hooks Are Active
 
-In Kiro IDE, open the Hooks panel (left sidebar → Hooks icon). You should see all 5 hooks listed:
+In Kiro IDE, open the **Agent Hooks** section in the Kiro panel. You should see all 5 hooks listed:
 
-| Hook | Trigger | Mode | Status |
-|---|---|---|---|
-| javadoc-on-save | File save (*.java) | Autopilot | ✅ Enabled |
-| test-on-new-class | File create (src/main/) | Supervised | ✅ Enabled |
-| security-lint-on-commit | Prompt ("ready to commit") | Supervised | ✅ Enabled |
-| pr-description-on-push | Spec task complete | Autopilot | ✅ Enabled |
-| doc-sync-on-stop | Manual | Supervised | ✅ Enabled |
+| Hook name | File | Status |
+|---|---|---|
+| Javadoc on Save | `javadoc-on-save.kiro.hook` | ✅ Active |
+| Test on New Class | `test-on-new-class.kiro.hook` | ✅ Active |
+| Security Lint on Commit | `security-lint-on-commit.kiro.hook` | ✅ Active |
+| PR Description on Push | `pr-description-on-push.kiro.hook` | ✅ Active |
+| Doc Sync on Stop | `doc-sync-on-stop.kiro.hook` | ✅ Active |
 
-If any hook shows as disabled or errored, open its `.md` file and check the frontmatter syntax.
+**If a hook does not appear:**
+
+```bash
+# Validate JSON syntax for each file
+for f in .kiro/hooks/*.kiro.hook; do
+  echo "Checking $f..."
+  python3 -m json.tool "$f" > /dev/null && echo "  ✅ Valid JSON" || echo "  ❌ Invalid JSON"
+done
+```
+
+Common mistakes that prevent hooks from loading:
+- File has `.md` extension instead of `.kiro.hook`
+- Trailing comma after the last key in a JSON object (invalid JSON)
+- Using single quotes instead of double quotes in JSON
+- Incorrect `"type"` value in the `"when"` block — must be exactly: `fileSaved`, `fileCreated`, `promptSubmit`, `postTaskExecution`, or `userTriggered`
 
 ---
 
 ## Step 8 — Commit the Hooks
 
 ```bash
-# Verify all 5 files exist
+# Verify all 5 files exist with the correct extension
 ls -la .kiro/hooks/
 # Expected:
-# javadoc-on-save.md
-# test-on-new-class.md
-# security-lint-on-commit.md
-# pr-description-on-push.md
-# doc-sync-on-stop.md
+# javadoc-on-save.kiro.hook
+# test-on-new-class.kiro.hook
+# security-lint-on-commit.kiro.hook
+# pr-description-on-push.kiro.hook
+# doc-sync-on-stop.kiro.hook
 
 git add .kiro/hooks/
-git commit -m "feat: Layer 4 — 5-hook automation pipeline committed
+git commit -m "feat: Layer 4 — 5-hook automation pipeline
 
-Hook 1: javadoc-on-save (autopilot, onSave, *.java)
-  → docs-agent adds Javadoc automatically on every save
+Hook 1: javadoc-on-save (fileSaved, src/main/**/*.java)
+  → askAgent: adds Javadoc to public methods on every save
 
-Hook 2: test-on-new-class (supervised, onCreate, src/main/**/*.java)
-  → test-generator-agent proposes tests for new classes
+Hook 2: test-on-new-class (fileCreated, src/main/**/*.java)
+  → askAgent: proposes test skeleton, waits for approval before writing
 
-Hook 3: security-lint-on-commit (supervised, promptEvent: 'ready to commit')
-  → security-agent scans staged files, blocks on Critical/High
+Hook 3: security-lint-on-commit (promptSubmit)
+  → askAgent: scans staged files when commit language detected, BLOCKED/CLEAR verdict
 
-Hook 4: pr-description-on-push (autopilot, specTaskEvent: onTaskComplete)
-  → pr-agent generates PR description from diff + spec tasks
+Hook 4: pr-description-on-push (postTaskExecution)
+  → askAgent: generates PR description from diff + spec task on task completion
 
-Hook 5: doc-sync-on-stop (supervised, manual trigger)
-  → docs-agent syncs README, Javadoc, and OpenAPI annotations"
+Hook 5: doc-sync-on-stop (userTriggered)
+  → askAgent: syncs Javadoc, README, and OpenAPI annotations on demand"
 
 git push origin main
 ```
 
 ---
 
+## Hook Format Reference
+
+Every Kiro hook file follows this JSON structure:
+
+```json
+{
+  "name": "Human-readable name shown in the Hooks panel",
+  "description": "What this hook does — one sentence",
+  "version": "1",
+  "when": {
+    "type": "triggerType",
+    "patterns": ["optional/glob/pattern/**/*.java"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The instruction sent to the agent when the hook fires."
+  }
+}
+```
+
+**Valid `when.type` values for Kiro IDE:**
+
+| Type | When it fires | Supports `patterns`? |
+|---|---|---|
+| `fileSaved` | A file matching the pattern is saved | ✅ Yes |
+| `fileCreated` | A file matching the pattern is created | ✅ Yes |
+| `fileDeleted` | A file matching the pattern is deleted | ✅ Yes |
+| `promptSubmit` | The user submits any prompt | ❌ No |
+| `postTaskExecution` | A spec task is marked complete | ❌ No |
+| `userTriggered` | Manual — you click the play button | ❌ No |
+
+**Valid `then.type` values:**
+
+| Type | What it does | Uses credits? |
+|---|---|---|
+| `askAgent` | Sends a prompt to the AI agent | ✅ Yes |
+| `shellCommand` | Runs a shell command directly | ❌ No |
+
+---
+
 ## Lab Completion Criteria
 
-- [ ] `.kiro/hooks/` directory exists with all 5 hook files
-- [ ] `javadoc-on-save.md` fires on file save and adds Javadoc (verified)
-- [ ] `test-on-new-class.md` proposes tests when a new class is created (verified)
-- [ ] `security-lint-on-commit.md` fires when "ready to commit" is typed (verified)
-- [ ] `pr-description-on-push.md` generates a PR description when a spec task completes (verified)
-- [ ] `doc-sync-on-stop.md` fires on manual trigger and presents a sync plan (verified)
-- [ ] Kiro Hooks panel shows all 5 hooks as enabled
+- [ ] `.kiro/hooks/` directory exists with all 5 files using the `.kiro.hook` extension
+- [ ] All 5 hook files contain valid JSON (verified with `python3 -m json.tool`)
+- [ ] All 5 hooks appear in the Kiro IDE **Agent Hooks** panel
+- [ ] `javadoc-on-save` fires when a `.java` file is saved — Javadoc added (verified)
+- [ ] `test-on-new-class` fires when a new class is created — test plan proposed (verified)
+- [ ] `security-lint-on-commit` fires on a commit-related prompt — security findings reported (verified)
+- [ ] `pr-description-on-push` fires when a spec task completes — PR description generated (verified)
+- [ ] `doc-sync-on-stop` fires on manual trigger — sync plan presented (verified)
 - [ ] All 5 hooks committed and pushed
