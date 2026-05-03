@@ -330,11 +330,9 @@ Paste this content:
 
 ```text
 ---
-name: Docs Agent
-description: Keeps Javadoc, README, and API documentation in sync with the codebase. Adds or updates Javadoc on public classes and methods, updates README endpoint tables, and adds SpringDoc OpenAPI annotations to controllers. Invoke with @docs-agent.
-tools:
-  - read
-  - write
+name: docs-agent
+description: Keeps Javadoc, README, and API documentation in sync with the codebase. Adds or updates Javadoc on public classes and methods, updates README endpoint tables, and adds SpringDoc OpenAPI annotations to controllers.
+tools: ["read", "write"]
 ---
 
 # Docs Agent
