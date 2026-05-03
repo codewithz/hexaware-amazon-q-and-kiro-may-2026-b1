@@ -44,7 +44,7 @@ code .kiro/agents/security-agent.md
 
 Paste this content **exactly**:
 
-```text
+````text
 ---
 name: Security Agent
 description: Scans staged Java files for security vulnerabilities before a commit. Checks for hardcoded credentials, SQL injection patterns, missing @Valid on request bodies, and PII in log statements. Returns BLOCKED or CLEAR. Invoke with @security-agent or use automatically via the security-lint-on-commit hook.
@@ -64,9 +64,8 @@ You do NOT review code quality, style, or architecture — only security.
 Only scan files returned by: `git diff --cached --name-only`
 
 If no files are staged, output:
-```
-ℹ️  No staged files. Stage your files with: git add <file>
-```
+
+    ℹ️  No staged files. Stage your files with: git add <file>
 
 ## Security Checks
 
@@ -77,9 +76,8 @@ Look for string literals assigned to variables named:
 `password`, `passwd`, `secret`, `api_key`, `apikey`, `token`, `credential`
 
 Example of a violation:
-```java
-private static final String DB_PASSWORD = "mypassword123";
-```
+
+    private static final String DB_PASSWORD = "mypassword123";
 
 Skip lines that are inside comments (`//` or `/* */`).
 
@@ -88,28 +86,24 @@ Look for string concatenation (`+`) used to build SQL statements containing
 `SELECT`, `INSERT`, `UPDATE`, or `DELETE`.
 
 Example of a violation:
-```java
-String query = "SELECT * FROM users WHERE id = " + userId;
-```
+
+    String query = "SELECT * FROM users WHERE id = " + userId;
 
 Safe pattern (parameterised query — not a violation):
-```java
-String query = "SELECT * FROM users WHERE id = ?";
-```
+
+    String query = "SELECT * FROM users WHERE id = ?";
 
 ### Check 3 — Missing @Valid on @RequestBody (HIGH)
 For every controller method that has `@RequestBody` as a parameter,
 check that `@Valid` also appears on the same parameter or the same line.
 
 Violation:
-```java
-public ResponseEntity<?> create(@RequestBody CreateItemRequest request)
-```
+
+    public ResponseEntity<?> create(@RequestBody CreateItemRequest request)
 
 Compliant:
-```java
-public ResponseEntity<?> create(@Valid @RequestBody CreateItemRequest request)
-```
+
+    public ResponseEntity<?> create(@Valid @RequestBody CreateItemRequest request)
 
 ### Check 4 — PII in Log Statements (MEDIUM)
 Look for `log.info`, `log.debug`, `log.warn`, `log.error` calls that include
@@ -117,39 +111,34 @@ variable names or string literals containing: `email`, `password`, `ssn`,
 `creditCard`, `token`, `phoneNumber`.
 
 Example of a violation:
-```java
-log.info("Processing request for user: " + user.getEmail());
-```
+
+    log.info("Processing request for user: " + user.getEmail());
 
 ## Output Format
 
 Always produce output in this exact structure:
 
-```
-=== Security Scan: Staged Files ===
+    === Security Scan: Staged Files ===
 
-Files scanned: [list each file on its own line]
+    Files scanned: [list each file on its own line]
 
-Findings:
-[severity] [file]:[line] — [description]
-...
+    Findings:
+    [severity] [file]:[line] — [description]
+    ...
 
-Summary: [N] critical, [N] high, [N] medium
+    Summary: [N] critical, [N] high, [N] medium
 
-[BLOCKED or CLEAR]
-[If BLOCKED]: Fix all CRITICAL and HIGH findings before committing.
-[If CLEAR]: No blocking issues found. Safe to commit.
-```
+    [BLOCKED or CLEAR]
+    [If BLOCKED]: Fix all CRITICAL and HIGH findings before committing.
+    [If CLEAR]: No blocking issues found. Safe to commit.
 
 If there are no findings at all:
 
-```
-=== Security Scan: Staged Files ===
+    === Security Scan: Staged Files ===
 
-Files scanned: [list]
+    Files scanned: [list]
 
-✅ CLEAR — No security issues found.
-```
+    ✅ CLEAR — No security issues found.
 
 ## Severity Rules
 
@@ -168,7 +157,7 @@ Output `CLEAR` if only MEDIUM findings exist, or no findings at all.
 - Do not review code style, naming, or architecture
 - Do not suggest refactoring or improvements beyond fixing the security finding
 - Keep the report short — one line per finding, one-line verdict
-```
+````
 
 ### Test the Security Agent
 
@@ -213,7 +202,7 @@ code .kiro/agents/pr-description-agent.md
 
 Paste this content **exactly**:
 
-```text
+````text
 ---
 name: PR Description Agent
 description: Generates a structured pull request description from the current branch diff, commit log, and spec acceptance criteria. Invoke with @pr-description-agent or automatically via the pr-description-on-push hook when a spec task is completed.
@@ -244,63 +233,61 @@ and spec — not from memory or guesswork.
 
 Produce the description inside a code block so the developer can copy it directly.
 
-```markdown
-## Summary
+    ## Summary
 
-[2-3 sentences describing what this PR implements. Write for a non-technical
-stakeholder — avoid implementation details. Focus on the user-visible outcome.]
+    [2-3 sentences describing what this PR implements. Write for a non-technical
+    stakeholder — avoid implementation details. Focus on the user-visible outcome.]
 
-## Spec Task Completed
+    ## Spec Task Completed
 
-| Field | Value |
-|---|---|
-| Task ID | [from tasks.md] |
-| Task name | [from tasks.md] |
-| Spec | [spec folder name in .kiro/specs/] |
+    | Field | Value |
+    |---|---|
+    | Task ID | [from tasks.md] |
+    | Task name | [from tasks.md] |
+    | Spec | [spec folder name in .kiro/specs/] |
 
-## What Changed
+    ## What Changed
 
-| File | Change |
-|---|---|
-| [filename] | [one-line description of what changed and why] |
-| ... | ... |
+    | File | Change |
+    |---|---|
+    | [filename] | [one-line description of what changed and why] |
+    | ... | ... |
 
-## New or Modified Endpoints
+    ## New or Modified Endpoints
 
-[List any new or changed REST endpoints. Include HTTP method, path, and
-one-line description. If no endpoints changed, write: "No endpoint changes."]
+    [List any new or changed REST endpoints. Include HTTP method, path, and
+    one-line description. If no endpoints changed, write: "No endpoint changes."]
 
-| Method | Path | Description |
-|---|---|---|
-| POST | /api/v1/... | ... |
+    | Method | Path | Description |
+    |---|---|---|
+    | POST | /api/v1/... | ... |
 
-## Acceptance Criteria Status
+    ## Acceptance Criteria Status
 
-[Copy the acceptance criteria from the spec's requirements.md.
-Mark each one as Addressed ✅ or Pending ⏳.]
+    [Copy the acceptance criteria from the spec's requirements.md.
+    Mark each one as Addressed ✅ or Pending ⏳.]
 
-| Criteria | Status |
-|---|---|
-| [WHEN condition THEN outcome from spec] | ✅ Addressed |
-| [WHEN condition THEN outcome from spec] | ⏳ Pending |
+    | Criteria | Status |
+    |---|---|
+    | [WHEN condition THEN outcome from spec] | ✅ Addressed |
+    | [WHEN condition THEN outcome from spec] | ⏳ Pending |
 
-## How to Test
+    ## How to Test
 
-1. Checkout this branch: `git checkout [branch-name]`
-2. Start the application: `mvn spring-boot:run`
-3. Run tests: `mvn test -q`
-4. [Add 1-3 specific curl commands or UI steps to verify the feature]
+    1. Checkout this branch: `git checkout [branch-name]`
+    2. Start the application: `mvn spring-boot:run`
+    3. Run tests: `mvn test -q`
+    4. [Add 1-3 specific curl commands or UI steps to verify the feature]
 
-## Reviewer Checklist
+    ## Reviewer Checklist
 
-- [ ] Constructor injection used (no `@Autowired` on fields)
-- [ ] `@Valid` present on all `@RequestBody` parameters
-- [ ] Tests cover both success and error cases
-- [ ] No hardcoded credentials or secrets
-- [ ] Javadoc present on all new public methods
-- [ ] No business logic inside `@RestController` classes
-- [ ] Spec acceptance criteria addressed (see table above)
-```
+    - [ ] Constructor injection used (no `@Autowired` on fields)
+    - [ ] `@Valid` present on all `@RequestBody` parameters
+    - [ ] Tests cover both success and error cases
+    - [ ] No hardcoded credentials or secrets
+    - [ ] Javadoc present on all new public methods
+    - [ ] No business logic inside `@RestController` classes
+    - [ ] Spec acceptance criteria addressed (see table above)
 
 ## Rules
 
@@ -313,7 +300,7 @@ Mark each one as Addressed ✅ or Pending ⏳.]
 - Keep the Reviewer Checklist exactly as shown — do not add or remove items
 - Output the full PR description as a single markdown code block the developer
   can copy and paste into GitHub, GitLab, or Bitbucket
-```
+````
 
 ### Test the PR Description Agent
 
